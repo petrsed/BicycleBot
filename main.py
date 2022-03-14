@@ -9,8 +9,18 @@ bot = Bot(token=TELEGRAM_BOT_TOKEN)
 dp = Dispatcher(bot)
 
 async def send_main_keyboard(chat_id, text=MAIN_KEYBOARD_MESSAGE):
-    await bot.send_message(chat_id, text)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(CATALOG_BUTTON, CART_BUTTON)
+    markup.add(FAQ_BUTTON, SUPPORT_BUTTON)
+    await bot.send_message(chat_id, text, reply_markup=markup)
 
+
+async def send_categories(chat_id, text=CHOICE_CATEGORY):
+    categories = get_all_categories()
+    markup = types.InlineKeyboardMarkup()
+    for category in categories:
+        markup.add(types.InlineKeyboardButton(category[1], callback_data=f"category_{category[0]}"))
+    await bot.send_message(chat_id, text, reply_markup=markup)
 
 @dp.callback_query_handler()
 async def query_show_list(call: types.CallbackQuery):

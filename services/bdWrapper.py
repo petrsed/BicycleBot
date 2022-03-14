@@ -17,3 +17,10 @@ def create_user(chat_id, username):
        VALUES('{chat_id}', '{username}');""")
     conn.commit()
     return True
+
+def get_all_categories():
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"""SELECT * FROM categories;""")
+    conn.commit()
+    return True
