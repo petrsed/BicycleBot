@@ -22,5 +22,5 @@ def get_all_categories():
     conn = sqlite3.connect(BD_FILE_NAME)
     cur = conn.cursor()
     cur.execute(f"""SELECT * FROM categories;""")
-    conn.commit()
-    return True
+    res = cur.fetchall()
+    return res

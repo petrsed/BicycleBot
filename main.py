@@ -35,7 +35,7 @@ async def send_welcome(message: types.Message):
     await send_main_keyboard(chat_id, HELLO_MESSAGE)
     if not check_user_presence(chat_id):
         create_user(chat_id, username)
-        await bot.send_message(chat_id, WELCOME_MESSAGE)
+        await bot.send_message(chat_id, FAQ_MESSAGE)
 
 
 
@@ -43,6 +43,10 @@ async def send_welcome(message: types.Message):
 async def echo(message: types.Message):
     logging_message(message.chat.id, message.from_user.username, message.text)
     chat_id, username, text = message.chat.id, message.from_user.username, message.text
+    if text == CATALOG_BUTTON:
+        await send_categories(chat_id)
+    elif text == FAQ_BUTTON:
+        await bot.send_message(chat_id, FAQ_MESSAGE)
 
 
 if __name__ == '__main__':
