@@ -18,6 +18,14 @@ def create_user(chat_id, username):
     conn.commit()
     return True
 
+def addcategory(name):
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"""INSERT INTO categories(name) 
+       VALUES('{name}');""")
+    conn.commit()
+    return True
+
 def get_all_categories():
     conn = sqlite3.connect(BD_FILE_NAME)
     cur = conn.cursor()
@@ -119,3 +127,25 @@ def hash_presence(hash):
     cur.execute(f"SELECT hash FROM orders WHERE hash = '{hash}';")
     res = cur.fetchall()
     return len(res) > 0
+
+def delcategory(category_id):
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"""DELETE FROM categories WHERE id = {category_id};""")
+    conn.commit()
+    return True
+
+def delproduct(product_id):
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"""DELETE FROM products WHERE id = {product_id};""")
+    conn.commit()
+    return True
+
+def addgood(category_id, name, description, price, photo):
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"""INSERT INTO products(category_id, name, description, photo, price) 
+       VALUES('{category_id}', '{name}', '{description}', '{photo}', {price});""")
+    conn.commit()
+    return True
