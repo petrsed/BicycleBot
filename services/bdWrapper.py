@@ -75,3 +75,47 @@ def delincart(chat_id, product_id):
     cart = get_user_cart(chat_id)
     cart.remove(str(product_id))
     change_user_parametr(chat_id, "cart", ";".join(cart))
+
+def add_order(chat_id, address):
+    cart = get_user_cart(chat_id)
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"""INSERT INTO orders(chat_id, cart, address) 
+       VALUES('{chat_id}', '{';'.join(cart)}', '{address}');""")
+    conn.commit()
+    return get_last_order_id()
+
+def get_last_order_id():
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"""SELECT id FROM orders ORDER BY id DESC""")
+    res = cur.fetchone()[0]
+    return res
+
+def get_order_by_id(order_id):
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"""SELECT * FROM orders WHERE id = {order_id};""")
+    res = cur.fetchone()
+    return res
+
+def get_user_by_id(user_id):
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"""SELECT * FROM users WHERE telegram_chat_id = {user_id};""")
+    res = cur.fetchone()
+    return res
+
+def change_order_parametr(order_id, parametr_name, parametr_value):
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"""UPDATE orders SET {parametr_name} = '{parametr_value}' WHERE id = '{order_id}'""")
+    conn.commit()
+    return True
+
+def hash_presence(hash):
+    conn = sqlite3.connect(BD_FILE_NAME)
+    cur = conn.cursor()
+    cur.execute(f"SELECT hash FROM orders WHERE hash = '{hash}';")
+    res = cur.fetchall()
+    return len(res) > 0
