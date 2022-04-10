@@ -6,25 +6,50 @@ from aiogram.dispatcher import FSMContext
 from config import *
 from services.log import logging_message
 from services.bdWrapper import *
+from services.qiwiWrapper import *
 from messages import *
 
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
-dp = Dispatcher(bot)
+dp = Dispatcher(bot, storage=MemoryStorage())
 
 class UserNewOrder(StatesGroup):
     address = State()
 
-@dp.message_handler(state=AdminNews.text, content_types=["text", "photo", "video", "animation"])
+@dp.message_handler(state=UserNewOrder.address)
 async def send(message: types.Message, state: FSMContext):
-    try:
-        if message.text == REJECT_BUTTON:
-            await send_main_keyboard(message.chat.id, ACTION_REJECTED)
-            await state.finish()
-            return
+    if message.text == REJECT_BUTTON:
+        await send_main_keyboard(message.chat.id, ACTION_REJECTED)
+        await state.finish()
+        return
+    address = message.text
+    order_id = add_order(message.chat.id, address)
+    await send_receipt(order_id)
+    await state.finish()
+
 
 @dp.message_handler(content_types=["photo"])
 async def echo(message: types.Message):
     print(message.photo[-1].file_id)
+
+async def send_receipt(order_id):
+    msg = RECEIPT_TEXT
+    order = get_order_by_id(order_id)
+    items = sort_items(order[2].split(";"))
+    items_text = ""
+    all_amount = 0
+    for item in items:
+        product = get_product_by_id(item)
+        amount = items[item]
+        items_text += f"{product[2]}: {product[5]} x {amount} = {product[5] * amount} руб.\n"
+        all_amount += product[5] * amount
+    msg = msg.replace("{PRODCUTS}", items_text)
+    msg = msg.replace("{AMOUNT}", str(all_amount))
+    change_order_parametr(order_id, "amount", all_amount)
+    url = f"https://oplata.qiwi.com/create?publicKey={QIWI_KEY}&amount={all_amount}&comment={order_id}"
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton(PAY_BUTTON, url=url))
+    markup.add(types.InlineKeyboardButton(CHECK_PAY_BUTTON, callback_data=f"checkorder_{order_id}"))
+    await bot.send_message(order[1], msg, parse_mode="HTML", reply_markup=markup)
 
 def get_prev_next_products(product_id):
     product = get_product_by_id(product_id)
@@ -62,6 +87,26 @@ async def send_categories(chat_id, text=CHOICE_CATEGORY, msg_id=None):
         await bot.send_message(chat_id, text, reply_markup=markup)
     else:
         await bot.edit_message_text(text, chat_id, msg_id, reply_markup=markup)
+
+async def order_notice(order_id):
+    order = get_order_by_id(order_id)
+    user = get_user_by_id(order[1])
+    items = sort_items(order[2].split(";"))
+    items_text = ""
+    all_amount = 0
+    for item in items:
+        product = get_product_by_id(item)
+        amount = items[item]
+        items_text += f"{product[2]}: {product[5]} x {amount} = {product[5] * amount} руб.\n"
+        all_amount += product[5] * amount
+    msg = NEW_ORDER_NOTICE
+    msg = msg.replace("{PRODCUTS}", items_text)
+    msg = msg.replace("{AMOUNT}", str(all_amount))
+    msg = msg.replace("{ID}", str(user[1]))
+    msg = msg.replace("{LOGIN}", str(user[2]))
+    msg = msg.replace("{ADDRESS}", str(order[3]))
+    await bot.send_message(NOTICE_ID, msg)
+
 
 async def send_good_slider(chat_id, product_id, msg_id=None, delete_old_message=False):
     cart = get_user_cart(chat_id)
@@ -152,6 +197,15 @@ async def query_show_list(call: types.CallbackQuery):
         keyboard.add(REJECT_BUTTON)
         await UserNewOrder.address.set()
         await bot.send_message(chat_id, ENTER_ADDRESS_TEXT, reply_markup=keyboard)
+    elif "checkorder_" in data:
+        change_user_parametr(chat_id, "cart", "")
+        order_id = data.split("_")[1]
+        if check_pay(order_id):
+            await order_notice(order_id)
+            change_order_parametr(order_id, "status", 1)
+            await bot.edit_message_text(ORDER_CREATED, chat_id, call.message.message_id)
+        else:
+            await bot.send_message(chat_id, PAY_NOT_FOUND)
 
 
 @dp.message_handler(commands=['start', 'help'])
